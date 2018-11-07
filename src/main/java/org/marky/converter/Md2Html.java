@@ -115,20 +115,22 @@ public class Md2Html {
 		File outFile = null;
 		FileWriter fw = null;
 		FileWriter fwToc = null;
+		String fullPath = src.getAbsolutePath();
 		
 		try {
 			if (out.isFile() || ! out.exists()) {
 				fw = new FileWriter(out, true);
-				fw.write("<hr id=\"" + src.getName() + "\" />\n");
+				fw.write("<hr id=\"" + fullPath.hashCode() + "\" />\n");
 				if (outToc != null) {
 					final boolean initToc = ! outToc.exists();
 					fwToc = new FileWriter(outToc, true);
 					if (initToc) {
 						fwToc.write("<h1>Index</h1>\n");
-						fwToc.write("<p>All markdown files of " + srcDir.getAbsolutePath() + "</p>\n");
+						fwToc.write("<p>All markdown files of " + srcDir.getAbsolutePath() + ":</p>\n");
 					}
-					final String link = out.getName() + "#" + src.getName();
-					fwToc.write("<p><a href=\"" + link + "\">" + link + "</a> (Original file: " + src.getAbsolutePath() + ")</p>\n");
+					
+					final String link = out.getName() + "#" + fullPath.hashCode();
+					fwToc.write("<li><a href=\"" + link + "\">" + fullPath + "</a></li>\n");
 				}
 			} else {
 				outFile = new File(out, FileUtil.getBaseName(src) + ".html");
