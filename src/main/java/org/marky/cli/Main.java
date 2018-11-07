@@ -36,13 +36,13 @@ public class Main {
 		File outDir = new File( argOut );
 		File outToc = SystemUtil.getFileArg("out.file.toc");
 		
-		Md2Html md2html = new Md2Html(srcDir, outDir);
-		
-		boolean walk = SystemUtil.getBoolArg("src.walk", false);
-		md2html.setSrcWalk(walk);
-		md2html.setOutToc(outToc);
-		
 		try {
+			Md2Html md2html = new Md2Html(srcDir, outDir);
+			
+			boolean walk = SystemUtil.getBoolArg("src.walk", false);
+			md2html.setSrcWalk(walk);
+			md2html.setOutToc(outToc);
+		
 			int cntFiles = md2html.convertMarkdown();
 			System.out.println("Processed " + cntFiles + " files in " + (System.currentTimeMillis() - start) + " ms.");
 		} catch (IOException e) {

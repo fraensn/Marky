@@ -23,7 +23,9 @@ public class Md2Html {
 	private boolean srcWalk = false;
 	private HashSet<String> acceptExtensions = new HashSet<>();
 	
-	public Md2Html(File aInDir, File aOutDirOrFile) {
+	private FileWriter content = null;
+	
+	public Md2Html(File aInDir, File aOutDirOrFile) throws IOException {
 		if (aInDir == null || aOutDirOrFile == null) {
 			throw new IllegalArgumentException("No folders passed! Please provide source folder (aInDir) and output folder (aOutBaseDir)");
 		} else if (! aInDir.exists()) {
@@ -34,8 +36,23 @@ public class Md2Html {
 		out = aOutDirOrFile;
 		if (out.isFile()) {
 			out.delete();
+			content = new FileWriter(out, true);
+			startHtmlConent(content);
 		}
 		setDefaultFileExtensions();
+	}
+	
+	private void startHtmlConent(FileWriter fw) throws IOException {
+		fw.write("<html>\n");
+		fw.write("  <head>\n");
+		fw.write("    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n");
+		fw.write("  </head>\n");
+		fw.write("  <body>\n");
+	}
+	
+	private void endHtmlConent(FileWriter fw) throws IOException {
+		fw.write("  </body>\n");
+		fw.write("</html>\n");
 	}
 	
 	public void setDefaultFileExtensions() {
@@ -64,7 +81,13 @@ public class Md2Html {
 	}
 	
 	public int convertMarkdown() throws FileNotFoundException, IOException {
-		return convertMarkdown(srcDir);
+		int cnt = convertMarkdown(srcDir);
+		
+		if (content != null) {
+			endHtmlConent(content);
+		}
+		
+		return cnt;
 	}
 	
 	private int convertMarkdown(File dir) throws FileNotFoundException, IOException {
@@ -107,20 +130,18 @@ public class Md2Html {
 		return cnt;
 	}
 	
-	public void convertMarkdownFile(File src) throws FileNotFoundException, IOException {
+	private void convertMarkdownFile(File src) throws FileNotFoundException, IOException {
 		Node document = parser.parseReader( new FileReader (src) );
 		HtmlRenderer renderer = HtmlRenderer.builder().build();
-		String render = renderer.render(document);
+//		String render = renderer.render(document);
 		
 		File outFile = null;
-		FileWriter fw = null;
 		FileWriter fwToc = null;
 		String fullPath = src.getAbsolutePath();
 		
 		try {
-			if (out.isFile() || ! out.exists()) {
-				fw = new FileWriter(out, true);
-				fw.write("<hr id=\"" + fullPath.hashCode() + "\" />\n");
+			if (content != null) {
+				content.write("<hr id=\"" + fullPath.hashCode() + "\" />\n");
 				if (outToc != null) {
 					final boolean initToc = ! outToc.exists();
 					fwToc = new FileWriter(outToc, true);
@@ -132,17 +153,14 @@ public class Md2Html {
 					final String link = out.getName() + "#" + fullPath.hashCode();
 					fwToc.write("<li><a href=\"" + link + "\">" + fullPath + "</a></li>\n");
 				}
+				
+				renderer.render(document, content);
 			} else {
 				outFile = new File(out, FileUtil.getBaseName(src) + ".html");
-				fw = new FileWriter(outFile);
+				renderer.render(document, new FileWriter(outFile));
 			}
-			
-			fw.write("<!-- Complete file path: " + src.getAbsolutePath() + " -->\n");
-			fw.write(render);
 		} finally {
-			if (fw != null) fw.close();
 			if (fwToc != null) fwToc.close();
 		}
-		
 	}
 }
