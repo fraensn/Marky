@@ -1,12 +1,17 @@
 package org.marky.converter;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.HashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
@@ -19,12 +24,13 @@ public class Md2Html {
 	private final File srcDir;
 	private final File out;
 	private File outToc = null;
-	
+	// TODO: make parametrizeable
+    private File template = new File("src/main/resources/templates/content.html");
+    
 	private boolean srcWalk = false;
 	private HashSet<String> acceptExtensions = new HashSet<>();
 	
-	private FileWriter content = null;
-	
+
 	public Md2Html(File aInDir, File aOutDirOrFile) throws IOException {
 		if (aInDir == null || aOutDirOrFile == null) {
 			throw new IllegalArgumentException("No folders passed! Please provide source folder (aInDir) and output folder (aOutBaseDir)");
@@ -36,23 +42,8 @@ public class Md2Html {
 		out = aOutDirOrFile;
 		if (out.isFile()) {
 			out.delete();
-			content = new FileWriter(out, true);
-			startHtmlConent(content);
 		}
 		setDefaultFileExtensions();
-	}
-	
-	private void startHtmlConent(FileWriter fw) throws IOException {
-		fw.write("<html>\n");
-		fw.write("  <head>\n");
-		fw.write("    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n");
-		fw.write("  </head>\n");
-		fw.write("  <body>\n");
-	}
-	
-	private void endHtmlConent(FileWriter fw) throws IOException {
-		fw.write("  </body>\n");
-		fw.write("</html>\n");
 	}
 	
 	public void setDefaultFileExtensions() {
@@ -81,16 +72,20 @@ public class Md2Html {
 	}
 	
 	public int convertMarkdown() throws FileNotFoundException, IOException {
-		int cnt = convertMarkdown(srcDir);
-		
-		if (content != null) {
-			endHtmlConent(content);
+		if (out.isDirectory()) {
+			return convertMarkdown(null, srcDir);
 		}
+
+		StringWriter writer = new StringWriter();
+		int cnt = convertMarkdown(writer, srcDir);
+		
+		FileUtil.write(template, out, writer);
 		
 		return cnt;
 	}
 	
-	private int convertMarkdown(File dir) throws FileNotFoundException, IOException {
+	
+	private int convertMarkdown(Writer writer, File dir) throws FileNotFoundException, IOException {
 		int cnt = 0;
 		File[] listFiles = dir.listFiles( new FileFilter() {
 			
@@ -109,7 +104,7 @@ public class Md2Html {
 		
 		
 		for (File f : listFiles) {
-			convertMarkdownFile(f);
+			convertMarkdownFile(writer, f);
 			cnt++;
 		}
 		
@@ -123,14 +118,14 @@ public class Md2Html {
 			});
 			
 			for (File subDir : dirs) {
-				cnt += convertMarkdown(subDir);
+				cnt += convertMarkdown(writer, subDir);
 			}
 		}
 		
 		return cnt;
 	}
 	
-	private void convertMarkdownFile(File src) throws FileNotFoundException, IOException {
+	private void convertMarkdownFile(Writer writer, File src) throws FileNotFoundException, IOException {
 		Node document = parser.parseReader( new FileReader (src) );
 		HtmlRenderer renderer = HtmlRenderer.builder().build();
 //		String render = renderer.render(document);
@@ -140,8 +135,8 @@ public class Md2Html {
 		String fullPath = src.getAbsolutePath();
 		
 		try {
-			if (content != null) {
-				content.write("<hr id=\"" + fullPath.hashCode() + "\" />\n");
+			if (writer != null) {
+				writer.write("<hr id=\"" + fullPath.hashCode() + "\" />\n");
 				if (outToc != null) {
 					final boolean initToc = ! outToc.exists();
 					fwToc = new FileWriter(outToc, true);
@@ -154,13 +149,16 @@ public class Md2Html {
 					fwToc.write("<li><a href=\"" + link + "\">" + fullPath + "</a></li>\n");
 				}
 				
-				renderer.render(document, content);
+				renderer.render(document, writer);
 			} else {
 				outFile = new File(out, FileUtil.getBaseName(src) + ".html");
-				renderer.render(document, new FileWriter(outFile));
+				StringWriter sw = new StringWriter();
+				renderer.render(document, sw);
+				FileUtil.write(template, outFile, sw);
 			}
 		} finally {
 			if (fwToc != null) fwToc.close();
 		}
 	}
+
 }
