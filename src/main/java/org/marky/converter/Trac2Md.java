@@ -16,6 +16,7 @@ public class Trac2Md {
 	private static Pattern PAT_MACRO = Pattern.compile("(\\[\\[.+\\]\\])");
 	private static Pattern PAT_CODE_START = Pattern.compile("\\{\\{\\{(#!)?");
 	private static Pattern PAT_CODE_END = Pattern.compile("\\}\\}\\}");
+	private static Pattern PAT_BOLD = Pattern.compile("'''");
 	
 	public static void main(String[] args) {
 		Trac2Md conv = new Trac2Md();
@@ -57,17 +58,24 @@ public class Trac2Md {
 		try ( BufferedReader br = new BufferedReader( new FileReader(wikiFile) );
 			  PrintWriter writer = new PrintWriter(tempFile) ) {
 			String line;
+			boolean code = false;
 			while ( (line = br.readLine()) != null) {
 				boolean empty = line.trim().length() == 0;
-				line = replace(line, PAT_HEADER_END, "");
-				line = replace(line, PAT_MACRO, "");
-				line = replace(line, PAT_HEADER, '#');
-				line = replace(line, PAT_CODE_START, "```");
-				line = replace(line, PAT_CODE_END, "```");
-				line = replaceLink(line);
+				StringBuffer ln = new StringBuffer(line);
+				code = replace(ln, PAT_CODE_START, "```");
+				if ( replace(ln, PAT_CODE_END, "```") ) {
+					code = false;
+				}
 				
-				if (empty || line.trim().length() > 0) {
-					writer.println(line);
+				if (! code) {
+					replace(ln, PAT_HEADER, '#');
+					replace(ln, PAT_HEADER_END, "");
+					replace(ln, PAT_MACRO, "");
+					replaceLink(ln);
+				}
+				
+				if (empty || ln.toString().trim().length() > 0) {
+					writer.println(ln.toString());
 				}
 			}
 		}
@@ -77,7 +85,7 @@ public class Trac2Md {
 		tempFile.delete();
 	}
 	
-	private String replaceLink(String line) {
+	private boolean replaceLink(StringBuffer line) {
 		Pattern p = Pattern.compile("\\[([\\w:/\\.\\-\\?_%@=]+) ([\\w:/\\.,\\-_%@=\\(\\)\"' ]+)\\]", Pattern.UNICODE_CHARACTER_CLASS);
 		Matcher m = p.matcher(line);
 		
@@ -101,35 +109,46 @@ public class Trac2Md {
 		if (found) {
 			newLine += line.substring(lastStart, line.length());
 		} else {
-			newLine = line;
+			newLine = line.toString();
 		}
 		
-		return newLine;
+		replaceBuffer(line, newLine);
+		
+		return found;
 	}
 	
-	private String replace(String line, Pattern regex, char replacement) {
-		String replaced = line;
+	private boolean replace(StringBuffer line, Pattern regex, char replacement) {
+		String replaced = line.toString();
 		Matcher matcher = regex.matcher(line);
+		boolean found = false;
+		
 		while (matcher.find()) {
 			String replace = "";
 			for (int i = 0; i < matcher.group().length(); i++) {
 				replace += replacement;
 			}
-			replaced = replaceLine(line, replace, matcher.start(), matcher.end());
+			replaced = replaceLine(replaced, replace, matcher.start(), matcher.end());
+			found = true;
 		}
 		
-		return replaced;
+		replaceBuffer(line, replaced);
+		
+		return found;
 	}
 	
 	
-	private String replace(String line, Pattern regex, String replacement) {
-		String replaced = line;
-		Matcher matcher = regex.matcher(line);
+	private boolean replace(StringBuffer line, Pattern regex, String replacement) {
+		String replaced = line.toString();
+		Matcher matcher = regex.matcher(replaced);
+		boolean found = false;
 		while (matcher.find()) {
 			replaced = replaceLine(replaced, replacement, matcher.start(), matcher.end());
+			found = true;
 		}
 		
-		return replaced;
+		replaceBuffer(line, replaced);
+		
+		return found;
 	}
 
 
@@ -140,5 +159,9 @@ public class Trac2Md {
 		replaced += line.substring(end);
 		return replaced;
 	}
-	
+
+	private void replaceBuffer(StringBuffer line, String replace) {
+		line.delete(0, line.length());
+		line.append(replace);
+	}
 }
