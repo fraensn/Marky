@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!--
+  ==========================================================================
+  Build file for creating scripts of the Legato Sapient DB.
+  ==========================================================================
+-->
+<project name="Markdown" basedir="." default="copyMd">
+
+	<!-- local environment -->
+	<!-- You can override properties by putting them in this file -->
+	<property file="build.properties" />
+	<property file="build_local.properties" />
+	
+	<property name="dest_dir"   value="C:/projects/Sapient_git_branches/sapient-documentation/wiki/trac_imported" />
+	<property name="from_dir"   value="C:/projects/Konzepte/howto/Trac_Export" />
+	
+	<property name="encoding"       value="UTF-8" />
+	<property name="outputencoding" value="UTF-8" />	
+
+	
+	<target name="copyMd" description="Copies all '*.md' files to another directory">
+		<echo>File for building Legato Sapient Database artifacts, such as Installation- and Update-scripts.</echo>
+		<copy todir="${dest_dir}">
+			<fileset dir="${from_dir}">
+				<include name="**/*.md"/>
+			</fileset>
+		</copy>
+	</target>
+		
+</project>
